@@ -1,0 +1,111 @@
+#include <htc.h>
+#define _XTAL_FREQ 1000000   
+#define IR_NS   RB0
+#define IR_EW   RB1
+#define IR_NE   RB2
+#define IR_SW   RB3
+
+#define RFID_NS RB4
+#define RFID_EW RB5
+#define RFID_NE RB6
+#define RFID_SW RB7
+
+
+#define NS_RED     RC0
+#define NS_YELLOW  RC1
+#define NS_GREEN   RC2
+
+
+#define EW_RED     RC3
+#define EW_YELLOW  RC4
+#define EW_GREEN   RC5
+
+
+#define NE_RED     RD0
+#define NE_YELLOW  RD1
+#define NE_GREEN   RD2
+
+
+#define SW_RED     RD3
+#define SW_YELLOW  RD4
+#define SW_GREEN   RD5
+
+
+void SmartDelay(unsigned int ms) {
+    while(ms > 0) {
+        if(RFID_NS || RFID_EW || RFID_NE || RFID_SW || IR_NS || IR_EW || IR_NE || IR_SW) return; 
+        __delay_ms(100);   
+        if(ms >= 100) ms -= 100;
+        else ms = 0;
+    }
+}
+
+
+void All_Off() {
+   NS_RED = NS_YELLOW = NS_GREEN = 0;
+   EW_RED = EW_YELLOW = EW_GREEN = 0;
+   NE_RED = NE_YELLOW = NE_GREEN = 0;
+   SW_RED = SW_YELLOW = SW_GREEN = 0;
+}
+
+
+void Lane_Green(char lane) {
+   All_Off();
+   switch(lane) {
+      case 'N': NS_GREEN = 1; EW_RED=1; NE_RED=1; SW_RED=1; break;
+      case 'E': EW_GREEN = 1; NS_RED=1; NE_RED=1; SW_RED=1; break;
+      case 'n': NE_GREEN = 1; NS_RED=1; EW_RED=1; SW_RED=1; break;
+      case 'S': SW_GREEN = 1; NS_RED=1; EW_RED=1; NE_RED=1; break;
+   }
+}
+
+
+bit RFID_Check() {
+   if(RFID_NS) { Lane_Green('N'); SmartDelay(5000); return 1; }
+   if(RFID_EW) { Lane_Green('E'); SmartDelay(5000); return 1; }
+   if(RFID_NE) { Lane_Green('n'); SmartDelay(5000); return 1; }
+   if(RFID_SW) { Lane_Green('S'); SmartDelay(5000); return 1; }
+   return 0;
+}
+
+
+bit IR_Check() {
+   if(IR_NS) { Lane_Green('N'); SmartDelay(4000); return 1; }
+   if(IR_EW) { Lane_Green('E'); SmartDelay(4000); return 1; }
+   if(IR_NE) { Lane_Green('n'); SmartDelay(4000); return 1; }
+   if(IR_SW) { Lane_Green('S'); SmartDelay(4000); return 1; }
+   return 0;
+}
+
+
+void Normal_Cycle() {
+   Lane_Green('N'); SmartDelay(5000);
+   All_Off(); NS_YELLOW=1; EW_RED=1; NE_RED=1; SW_RED=1; SmartDelay(2000);
+
+
+   Lane_Green('E'); SmartDelay(5000);
+   All_Off(); EW_YELLOW=1; NS_RED=1; NE_RED=1; SW_RED=1; SmartDelay(2000);
+
+
+   Lane_Green('n'); SmartDelay(5000);
+   All_Off(); NE_YELLOW=1; NS_RED=1; EW_RED=1; SW_RED=1; SmartDelay(2000);
+
+
+   Lane_Green('S'); SmartDelay(5000);
+   All_Off(); SW_YELLOW=1; NS_RED=1; EW_RED=1; NE_RED=1; SmartDelay(2000);
+}
+void main() {
+   
+   TRISB = 0xFF;
+   TRISC = 0x00;
+   TRISD = 0x00;
+
+   PORTC = 0x00;
+   PORTD = 0x00;
+
+   while(1) {
+      if(RFID_Check()) continue;  
+      if(IR_Check()) continue;
+      Normal_Cycle();              
+   }
+}
